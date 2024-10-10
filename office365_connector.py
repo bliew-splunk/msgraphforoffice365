@@ -41,10 +41,9 @@ from phantom.vault import Vault
 from office365_consts import *
 from process_email import ProcessEmail
 
+from office365_api_config import SERVER_TOKEN_URL, MSGRAPH_API_URL, MSGRAPH_BETA_API_URL
+
 TC_FILE = "oauth_task.out"
-SERVER_TOKEN_URL = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token"
-MSGRAPH_API_URL = "https://graph.microsoft.com/v1.0"
-MSGRAPH_BETA_API_URL = "https://graph.microsoft.com/beta"
 MAX_END_OFFSET_VAL = 2147483646
 
 
@@ -3599,19 +3598,6 @@ class Office365Connector(BaseConnector):
         # Save the state, this data is saved across actions and app upgrades
         self.save_state(self._state)
         return phantom.APP_SUCCESS
-
-def patch_graph_api_urls(connector):
-    action_result = ActionResult()
-
-    _, phantom_base_url = connector._get_phantom_base_url(action_result)
-    connector.save_progress("Phantom Base URL: {}".format(phantom_base_url))
-    global SERVER_TOKEN_URL, MSGRAPH_API_URL, MSGRAPH_BETA_API_URL
-    if "yummy-yabby-725" in phantom_base_url:
-        connector.save_progress("Patching the Graph API URLs for development")
-        NGROK_URL = "https://524a-220-233-44-9.ngrok-free.app"
-        SERVER_TOKEN_URL = NGROK_URL + "/{0}/oauth2/v2.0/token"
-        MSGRAPH_API_URL = f"{NGROK_URL}/v1.0"
-        MSGRAPH_BETA_API_URL = f"{NGROK_URL}/beta"
 
 def log_graph_api_urls(connector):
     connector.save_progress("Logging the Graph API URLs")

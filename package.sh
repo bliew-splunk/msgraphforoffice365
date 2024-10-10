@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 set -xe
+
+ENVIRONMENT="${1:-prod}"
+echo "Environment: $ENVIRONMENT"
+if [ "$ENVIRONMENT" != "prod" ] && [ "$ENVIRONMENT" != "dev" ]; then
+  echo "Invalid environment: $ENVIRONMENT"
+  exit 1
+fi
+
 APP_NAME="msgraphforoffice365"
 APP_JSON="office365.json"
 APP_JSON_TEMP="$APP_JSON.tmp"
@@ -11,7 +19,25 @@ mv "$APP_JSON_TEMP" "$APP_JSON"
 
 mkdir -p build
 timestamp=$(date +%s)
-output="build/$APP_NAME-$bumped_version-${timestamp}.tgz"
-echo "Output: $output"
 name_of_this_dir=$(basename "$(pwd)")
-tar --exclude=".*" --exclude="build" -C ../ -czvf "$output" "$name_of_this_dir"
+output="$(pwd)/build/$APP_NAME-$bumped_version-${timestamp}-${ENVIRONMENT}.tgz"
+#tar --exclude=".*" --exclude="build" -C ../ -czvf "$output" "$name_of_this_dir"
+
+temp_dir=$(mktemp -d)
+echo "Temp dir: $temp_dir"
+# Copy the files in this dir to a temp dir
+rsync -av --exclude=".*" --exclude="build" --exclude="__pycache__" . "$temp_dir/app"
+
+if [ "$ENVIRONMENT" == "dev" ]; then
+echo "Overriding the MS GRAPH API URL config for dev environment"
+cat <<EOT > "$temp_dir/app/office365_api_config.py"
+NGROK_URL = "https://524a-220-233-44-9.ngrok-free.app"
+SERVER_TOKEN_URL = NGROK_URL + "/{0}/oauth2/v2.0/token"
+MSGRAPH_API_URL = f"{NGROK_URL}/v1.0"
+MSGRAPH_BETA_API_URL = f"{NGROK_URL}/beta"
+EOT
+fi
+
+cd "$temp_dir"
+tar --exclude=".*" -czvf "$output" app/
+echo "Output: $output"
