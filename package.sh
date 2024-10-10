@@ -30,8 +30,12 @@ rsync -av --exclude=".*" --exclude="build" --exclude="__pycache__" . "$temp_dir/
 
 if [ "$ENVIRONMENT" == "dev" ]; then
 echo "Overriding the MS GRAPH API URL config for dev environment"
+  if [[ -z "${NGROK_URL}" ]]; then
+    echo "Must set NGROK_URL environment variable"
+    exit 1
+  fi
 cat <<EOT > "$temp_dir/app/office365_api_config.py"
-NGROK_URL = "https://524a-220-233-44-9.ngrok-free.app"
+NGROK_URL = "${NGROK_URL}"
 SERVER_TOKEN_URL = NGROK_URL + "/{0}/oauth2/v2.0/token"
 MSGRAPH_API_URL = f"{NGROK_URL}/v1.0"
 MSGRAPH_BETA_API_URL = f"{NGROK_URL}/beta"
