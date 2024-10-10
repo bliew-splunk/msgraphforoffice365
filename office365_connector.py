@@ -44,6 +44,7 @@ from process_email import ProcessEmail
 TC_FILE = "oauth_task.out"
 SERVER_TOKEN_URL = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token"
 MSGRAPH_API_URL = "https://graph.microsoft.com/v1.0"
+MSGRAPH_BETA_API_URL = "https://graph.microsoft.com/beta"
 MAX_END_OFFSET_VAL = 2147483646
 
 
@@ -792,12 +793,14 @@ class Office365Connector(BaseConnector):
         method="get",
         nextLink=None,
         download=False,
+        useBetaApi=False,
     ):
 
         if nextLink:
             url = nextLink
         else:
-            url = "{0}{1}".format(MSGRAPH_API_URL, endpoint)
+            base_api_url =  MSGRAPH_BETA_API_URL if useBetaApi else MSGRAPH_API_URL
+            url = "{0}{1}".format(base_api_url, endpoint)
 
         if headers is None:
             headers = {}
@@ -3381,7 +3384,30 @@ class Office365Connector(BaseConnector):
         elif action_id == 'update_email':
             ret_val = self._handle_update_email(param)
 
+        elif action_id == 'create_email_threat_submission':
+            ret_val = self._handle_create_email_threat_submission(param)
+
         return ret_val
+
+    def _handle_create_email_threat_submission(self, param):
+        self.save_progress(
+            "In action handler for: {0}".format(self.get_action_identifier())
+        )
+        action_result = self.add_action_result(ActionResult(dict(param)))
+        payload = param["payload"]
+        payload_json = json.loads(payload) # Validate is valid JSON object
+        endpoint = "/security/threatSubmission/emailThreats"
+        ret_val, resp_json = self._make_rest_call_helper(
+            action_result, endpoint, method="post", useBetaApi=True, data=json.dumps(payload_json)
+        )
+        self.save_progress(f"Response: {resp_json}")
+        if phantom.is_fail(ret_val):
+            return action_result.set_status(phantom.APP_ERROR, f"Failed to create email threat submission. Response: {resp_json}")
+
+        action_result.add_data(resp_json)
+        return action_result.set_status(
+            phantom.APP_SUCCESS, "Successfully created email threat submission"
+        )
 
     def _get_token(self, action_result):
 
@@ -3575,21 +3601,23 @@ class Office365Connector(BaseConnector):
         return phantom.APP_SUCCESS
 
 def patch_graph_api_urls(connector):
-    connector.save_progress("Patching the Graph API URLs for development")
     action_result = ActionResult()
 
     _, phantom_base_url = connector._get_phantom_base_url(action_result)
     connector.save_progress("Phantom Base URL: {}".format(phantom_base_url))
-    global SERVER_TOKEN_URL, MSGRAPH_API_URL
+    global SERVER_TOKEN_URL, MSGRAPH_API_URL, MSGRAPH_BETA_API_URL
     if "yummy-yabby-725" in phantom_base_url:
+        connector.save_progress("Patching the Graph API URLs for development")
         NGROK_URL = "https://524a-220-233-44-9.ngrok-free.app"
         SERVER_TOKEN_URL = NGROK_URL + "/{0}/oauth2/v2.0/token"
-        MSGRAPH_API_URL = NGROK_URL
+        MSGRAPH_API_URL = f"{NGROK_URL}/v1.0"
+        MSGRAPH_BETA_API_URL = f"{NGROK_URL}/beta"
 
 def log_graph_api_urls(connector):
     connector.save_progress("Logging the Graph API URLs")
     connector.save_progress("Server Token URL: {}".format(SERVER_TOKEN_URL))
     connector.save_progress("MSGraph API URL: {}".format(MSGRAPH_API_URL))
+    connector.save_progress("MSGraph Beta API URL: {}".format(MSGRAPH_BETA_API_URL))
 
 
 if __name__ == "__main__":
