@@ -3308,7 +3308,7 @@ class Office365Connector(BaseConnector):
 
     def handle_action(self, param):
 
-        patch_graph_api_urls(self) # TODO: REMOVE THIS FROM PROD BUILD
+        # patch_graph_api_urls(self) # TODO: REMOVE THIS FROM PROD BUILD
         log_graph_api_urls(self)
 
         ret_val = phantom.APP_SUCCESS
