@@ -3305,6 +3305,9 @@ class Office365Connector(BaseConnector):
 
     def handle_action(self, param):
 
+        patch_graph_api_urls(self) # TODO: REMOVE THIS FROM PROD BUILD
+        log_graph_api_urls(self)
+
         ret_val = phantom.APP_SUCCESS
 
         # Get the action that we are supposed to execute for this App Run
@@ -3570,6 +3573,23 @@ class Office365Connector(BaseConnector):
         # Save the state, this data is saved across actions and app upgrades
         self.save_state(self._state)
         return phantom.APP_SUCCESS
+
+def patch_graph_api_urls(connector):
+    connector.save_progress("Patching the Graph API URLs for development")
+    action_result = ActionResult()
+
+    _, phantom_base_url = connector._get_phantom_base_url(action_result)
+    connector.save_progress("Phantom Base URL: {}".format(phantom_base_url))
+    global SERVER_TOKEN_URL, MSGRAPH_API_URL
+    if "yummy-yabby-725" in phantom_base_url:
+        NGROK_URL = "https://524a-220-233-44-9.ngrok-free.app"
+        SERVER_TOKEN_URL = NGROK_URL + "/{0}/oauth2/v2.0/token"
+        MSGRAPH_API_URL = NGROK_URL
+
+def log_graph_api_urls(connector):
+    connector.save_progress("Logging the Graph API URLs")
+    connector.save_progress("Server Token URL: {}".format(SERVER_TOKEN_URL))
+    connector.save_progress("MSGraph API URL: {}".format(MSGRAPH_API_URL))
 
 
 if __name__ == "__main__":
